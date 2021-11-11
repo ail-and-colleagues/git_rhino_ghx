@@ -134,33 +134,6 @@ class Object(Ghx_Content):
         return class_info, instance_info, pos, (ghx_items, ghx_Container, ghx_Attributes, ghx_others)
 
     @classmethod
-    def Panel_Object(cls, class_info, instance_info, pos, ghx_list):
-        class_guid, class_name = class_info
-        instance_guid, instance_name, instance_nick_name = instance_info
-        ghx_items, ghx_Container, ghx_Attributes, ghx_others = ghx_list
-
-        # fetch user text
-        cur = ghx_Container.xpath("./items")[0]
-        t = fetch_content(cur, "name", "UserText")
-        if t:
-            t = t[0].text
-        user_text = t
-        print("user_text: ", user_text)
-
-        # fetch input
-        cur = ghx_Container.xpath("./items")[0]
-        input_output_info = list()
-        Source = list()
-        for c in fetch_content(cur, "name", "Source"):
-            print("c.text: ", c.text)
-            Source.append(c.text)
-        
-        isInput = True
-        input_output_info.append(Object_Param(instance_guid, "in", "in", isInput, Source, instance_guid))
-        
-        return cls(class_info, instance_info, input_output_info, ghx_list)
-
-    @classmethod
     def Generic_Object(cls, class_info, instance_info, pos, ghx_list):
         class_guid, class_name = class_info
         instance_guid, instance_name, instance_nick_name = instance_info
@@ -231,9 +204,38 @@ class Object(Ghx_Content):
                     end.append(c.parent_object_guid + ":" + c.InstanceGuid)
 
         return beg, end
+class Panel_Object(Object):
+    def __init__(self, class_info, instance_info, input_output_info, ghx_list):
+        super().__init__(class_info, instance_info, input_output_info, ghx_list)
 
+    @classmethod
+    def Panel_Object(cls, class_info, instance_info, pos, ghx_list):
+        class_guid, class_name = class_info
+        instance_guid, instance_name, instance_nick_name = instance_info
+        ghx_items, ghx_Container, ghx_Attributes, ghx_others = ghx_list
 
+        # fetch user text
+        cur = ghx_Container.xpath("./items")[0]
+        t = fetch_content(cur, "name", "UserText")
+        if t:
+            t = t[0].text
+        user_text = t
+        print("user_text: ", user_text)
 
+        # fetch input
+        cur = ghx_Container.xpath("./items")[0]
+        input_output_info = list()
+        Source = list()
+        for c in fetch_content(cur, "name", "Source"):
+            print("c.text: ", c.text)
+            Source.append(c.text)
+        
+        isInput = True
+        input_output_info.append(Object_Param(instance_guid, "in", "in", isInput, Source, instance_guid))
+        
+        return cls(class_info, instance_info, input_output_info, ghx_list)
+    def derive_node_desc(self):
+        print("tbi")
 
 tree = et.parse("./sample/xmlTest.ghx")
 root = tree.getroot()
@@ -273,7 +275,7 @@ for ghx_Object in ghx_DefinitionObjects_chunks:
     class_info, instance_info, pos, ghx_list = Object.fetch_common_info(ghx_Object_items, ghx_Object_Container, ghx_Object_Attributes, ghx_Object_others)
     class_guid, class_name = class_info
     if class_name == "Panel":
-        comp = Object.Panel_Object(class_info, instance_info, pos, ghx_list)
+        comp = Panel_Object.Panel_Object(class_info, instance_info, pos, ghx_list)
     else:
         comp = Object.Generic_Object(class_info, instance_info, pos, ghx_list)
 
