@@ -192,21 +192,13 @@ class Object(Ghx_Content):
             for s in c.Source:
                 # if s in Object_Param.parent_table.keys():
                 parent = Object_Param.parent_table[s]
-                if parent == s:
-                    beg.append(parent + ":")
-                else:
-                    print("s: ", s, parent)
-                    beg.append(parent + ":" + s)
-
-                if c.parent_object_guid == c.InstanceGuid:
-                    end.append(c.parent_object_guid)
-                else:
-                    end.append(c.parent_object_guid + ":" + c.InstanceGuid)
-
+                beg.append(parent + ":" + s)
+                end.append(c.parent_object_guid + ":" + c.InstanceGuid)
         return beg, end
 class Panel_Object(Object):
-    def __init__(self, class_info, instance_info, input_output_info, ghx_list):
+    def __init__(self, class_info, instance_info, input_output_info, ghx_list, user_text):
         super().__init__(class_info, instance_info, input_output_info, ghx_list)
+        self.user_text = user_text
 
     @classmethod
     def Panel_Object(cls, class_info, instance_info, pos, ghx_list):
@@ -216,10 +208,10 @@ class Panel_Object(Object):
 
         # fetch user text
         cur = ghx_Container.xpath("./items")[0]
-        t = fetch_content(cur, "name", "UserText")
-        if t:
-            t = t[0].text
-        user_text = t
+        user_text = ""
+        if fetch_content(cur, "name", "SourceCount")[0].text == "0":
+            user_text = fetch_content(cur, "name", "UserText")[0].text
+        # user_text = t
         print("user_text: ", user_text)
 
         # fetch input
@@ -233,9 +225,18 @@ class Panel_Object(Object):
         isInput = True
         input_output_info.append(Object_Param(instance_guid, "in", "in", isInput, Source, instance_guid))
         
-        return cls(class_info, instance_info, input_output_info, ghx_list)
+        return cls(class_info, instance_info, input_output_info, ghx_list, user_text)
     def derive_node_desc(self):
-        print("tbi")
+        # s.node('struct3', r'hello\nworld |{ b |{c|<here> d|e}| f}| g | h')`
+        if not self.instance_nick_name:
+            self.instance_nick_name = self.instance_name
+
+        desc = ""
+        desc += "{<" + self.instance_guid + "> " + self.instance_nick_name + " }"
+        if self.user_text:
+            desc += "|{ " + self.user_text + " }"       
+        print(desc)
+        return desc
 
 tree = et.parse("./sample/xmlTest.ghx")
 root = tree.getroot()
@@ -326,3 +327,21 @@ with s.subgraph(name='group') as c:
 
 
 s.render()
+
+
+import git
+repo = git.Repo("./")
+print(repo)
+
+print(repo.is_dirty())
+# print(repo.index)
+
+# hcommit = repo.head.commit
+# print(hcommit.diff())                  # diff tree against index
+# print(hcommit.diff('HEAD~1'))          # diff tree against previous tree
+# print(hcommit.diff(None))              # diff tree against working tree
+
+# index = repo.index
+# index.diff()                    # diff index against itself yielding empty diff
+# index.diff(None)                # diff index against working copy
+# index.diff('HEAD')      
