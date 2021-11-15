@@ -1,57 +1,70 @@
 # from lxml import etree as et
 
-def print_contents(temp_root):
-    print("tag:", temp_root.tag, ", attrib: ", temp_root.attrib)
-    if temp_root.text[0] != "\n":
-        print("text:, ", temp_root.text)
-    for c in temp_root:
-        print("\t", c.tag, c.attrib)
-    print("\t.")
+# from _typeshed import NoneType
 
 
-def extruct_content(cur, att_key, att_val):
+def print_contents(cur):
+    def chk(t):
+        if t is None:
+            return False
+        if  t[0] == "\n":
+            return False
+        return True
+    ret = "tag: {}, attrib: {}".format(cur.tag, cur.attrib)
+    if chk(cur.text):
+        ret += ", text: {}".format(cur.text) 
+    print(ret)
+    return ret
+
+
+def fetch_content(cur, att_key, att_val, returnOthers=False):
+    # https://stackoverflow.com/questions/2243131/getting-certain-attribute-value-using-xpath
     ret = list()
     others = list()
     for c in cur:
-        appended = False
-        if att_key in c.attrib.keys():
-            v = c.attrib[att_key]
-            if v == att_val:
-                appended = True
-                ret.append(c)
-        if not appended:
+        t = c.xpath( att_key + "=\"" + att_val + "\"")
+        if t:
+            ret.append(c)
+        else:
             others.append(c)
-            
-    return ret, others
 
-def fetch_content(cur, att_key, att_val):
-    ret, _ = extruct_content(cur, att_key, att_val)
+    if returnOthers:
+        return ret, others
+    
     return ret
 
+def fetch_content_recursive(cur, att_key, att_val):
+    ret = list()
+    _, cur = fetch_content(cur, att_key, att_val, returnOthers=True)
+
+    for child in cur:
+        ret.append(child)
+        ret += fetch_content_recursive(child.xpath("./*"), att_key, att_val)
+    return ret
+        
 
 def fetch_objects_chunks(ghx_root):
 
     root = ghx_root
     # ghxl.print_contents(root)
-    ghx_Definition = fetch_content(root.xpath("/Archive/chunks/*"), "name", "Definition")[0]
-    # ghxl.print_contents(ghx_Definition)
-    ghx_DefinitionObjects = fetch_content(ghx_Definition.xpath("./chunks/*"), "name", "DefinitionObjects")[0]
+    ghx_Definition = fetch_content(root.xpath("/Archive/chunks/*"), "@name", "Definition")[0]
+    print_contents(ghx_Definition)
+    ghx_DefinitionObjects = fetch_content(ghx_Definition.xpath("./chunks/*"), "@name", "DefinitionObjects")[0]
     # ghxl.print_contents(ghx_DefinitionObjects)
-    ghx_ObjectCount = fetch_content(ghx_DefinitionObjects.xpath("./items/*"), "name", "ObjectCount")[0]
-    # ghxl.print_contents(ghx_ObjectCount)
-    # component_count = int(ghx_ObjectCount.text)
-    ghx_DefinitionObjects_chunks = fetch_content(ghx_DefinitionObjects.xpath("./chunks/*"), "name", "Object")
+    ghx_ObjectCount = fetch_content(ghx_DefinitionObjects.xpath("./items/*"), "@name", "ObjectCount")[0]
+    ghx_DefinitionObjects_chunks = fetch_content(ghx_DefinitionObjects.xpath("./chunks/*"), "@name", "Object")
     return ghx_ObjectCount, ghx_DefinitionObjects_chunks
     
 def parse_object_chunks(ghx_object_chunk):
     ghx_Object_items = ghx_object_chunk.xpath("./items")[0]
     # print_contents(ghx_Object_items)
 
-    ghx_Object_Container = fetch_content(ghx_object_chunk.xpath("./chunks/*"), "name", "Container")[0]
+    ghx_Object_Container = fetch_content(ghx_object_chunk.xpath("./chunks/*"), "@name", "Container")[0]
     # ghx_Object_Container_items = ghx_Object_Container.xpath("./items")[0]
 
-    ghx_Object_Attributes, ghx_Object_others = extruct_content(ghx_Object_Container.xpath("./chunks/*"), "name", "Attributes")
-    ghx_Object_Attributes = ghx_Object_Attributes[0]
+    ghx_Object_Attributes = fetch_content(ghx_Object_Container.xpath("./chunks/*"), "@name", "Attributes")[0]
+
+    ghx_Object_others  = fetch_content(ghx_Object_Container.xpath("./chunks/*"), "@name!", "Attributes")
     # print("ghx_Object_Attributes: ", ghx_Object_Attributes)
     # print("ghx_Object_others: ", ghx_Object_others)
 
@@ -66,13 +79,16 @@ class Ghx_Content:
 
 class Object_Param(Ghx_Content):
     parent_table = dict()
-    def __init__(self, InstanceGuid, Name, NickName, isInput, Source, parent_object_guid):
+    def __init__(self, InstanceGuid, Name, NickName, isInput, Source, parent_object_guid, hash_src="None"):
         self.InstanceGuid = InstanceGuid
         self.Name = Name
         self.NickName = NickName
         self.isInput = isInput
         self.Source = Source
         self.parent_object_guid = parent_object_guid
+
+        self.hash_src = hash_src
+        
         print("InstanceGuid: ", self.InstanceGuid, ", Name: ", self.Name, ", NickName: ", self.NickName)
         print("Source: ", len(self.Source), ", ", self.Source)
         print("isInput: ", self.isInput)
@@ -82,25 +98,24 @@ class Object_Param(Ghx_Content):
 
     @classmethod
     def Object_Param_from_ghx(cls, ghx_Param, parent_object_guid, parent_pos):
-        
         cur = ghx_Param.xpath("./items")[0]
-        InstanceGuid = fetch_content(cur, "name", "InstanceGuid")[0].text
-        Name = fetch_content(cur, "name", "Name")[0].text
-        NickName = fetch_content(cur, "name", "NickName")[0].text
-        Source = list()
-        s_list =  fetch_content(cur, "name", "Source")
+        guid = fetch_content(cur, "@name", "InstanceGuid")[0].text
+        name = fetch_content(cur, "@name", "Name")[0].text
+        nick_name = fetch_content(cur, "@name", "NickName")[0].text
+        source = list()
+        s_list =  fetch_content(cur, "@name", "source")
         for s in s_list:
-            Source.append(s.text)
+            source.append(s.text)
 
         cur = ghx_Param.xpath("./chunks/*")
-        cur = fetch_content(cur, "name", "Attributes")[0]
-        cur = fetch_content(cur.xpath("./items/*"), "name", "Pivot")[0]
+        cur = fetch_content(cur, "@name", "Attributes")[0]
+        cur = fetch_content(cur.xpath("./items/*"), "@name", "Pivot")[0]
 
         pos = [float(cur.xpath("./X")[0].text), float(cur.xpath("./Y")[0].text)]
-        isInput = False
+        is_input = False
         if pos[0] < parent_pos[0]:
-            isInput = True
-        return cls(InstanceGuid, Name, NickName, isInput, Source, parent_object_guid)
+            is_input = True
+        return cls(guid, name, nick_name, is_input, source, parent_object_guid)
 
 class Object(Ghx_Content):
     def __init__(self, class_info, instance_info, input_output_info, ghx_list):
@@ -116,7 +131,6 @@ class Object(Ghx_Content):
         print("class guid: ", self.class_guid, ", name: ", self.class_name)
         print("inst guid: ", self.instance_guid, ", name: ", self.instance_name, ", nickname: ", self.instance_nick_name)
 
-
         for param in input_output_info:
             if param.isInput:
                 self.input_list.append(param)
@@ -130,25 +144,23 @@ class Object(Ghx_Content):
         for c in self.output_list:
             print("\t Name: ", c.Name, c.InstanceGuid, c.Source)
 
-        # Ghx_Content.parent_table[self.instance_guid] = self
-
     @classmethod
     def fetch_common_info(cls, ghx_items, ghx_Container, ghx_Attributes, ghx_others):
         ## retrieve class info/.
-        class_guid = fetch_content(ghx_items, "name", "GUID")[0].text
-        class_name = fetch_content(ghx_items, "name", "Name")[0].text
+        class_guid = fetch_content(ghx_items, "@name", "GUID")[0].text
+        class_name = fetch_content(ghx_items, "@name", "Name")[0].text
         print("class guid: ", class_guid, ", name: ", class_name)
 
         ## retrieve instance info.
         cur = ghx_Container.xpath("./items")[0]
-        instance_guid = fetch_content(cur, "name", "InstanceGuid")[0].text
-        instance_name = fetch_content(cur, "name", "Name")[0].text
-        instance_nick_name = fetch_content(cur, "name", "NickName")[0].text
+        instance_guid = fetch_content(cur, "@name", "InstanceGuid")[0].text
+        instance_name = fetch_content(cur, "@name", "Name")[0].text
+        instance_nick_name = fetch_content(cur, "@name", "NickName")[0].text
         print("inst guid: ", instance_guid, ", name: ", instance_name, ", nickname: ", instance_nick_name)
 
         ## retrive instaice pos.
         cur = ghx_Attributes.xpath("./items/*")
-        ghx_Pivot = fetch_content(cur, "name", "Pivot")
+        ghx_Pivot = fetch_content(cur, "@name", "Pivot")
         if ghx_Pivot:
             pos = [float(ghx_Pivot[0].xpath("./X")[0].text), float(ghx_Pivot[0].xpath("./Y")[0].text)]
             print("inst pos: ", pos)
@@ -168,7 +180,7 @@ class Object(Ghx_Content):
         # fetch input
         def recursive_search(cur):
             # print_contents(cur)
-            t_guid = fetch_content(cur.xpath("./items/*"), "name", "InstanceGuid")
+            t_guid = fetch_content(cur.xpath("./items/*"), "@name", "InstanceGuid")
             # print("instance_guid: ", instance_guid)
             if t_guid:
                 # input_output_list.append(Object_Param(cur, self))
@@ -235,8 +247,8 @@ class Panel_Object(Object):
         # fetch user text
         cur = ghx_Container.xpath("./items")[0]
         user_text = ""
-        if fetch_content(cur, "name", "SourceCount")[0].text == "0":
-            user_text = fetch_content(cur, "name", "UserText")[0].text
+        if fetch_content(cur, "@name", "SourceCount")[0].text == "0":
+            user_text = fetch_content(cur, "@name", "UserText")[0].text
         # user_text = t
         print("user_text: ", user_text)
 
@@ -244,7 +256,7 @@ class Panel_Object(Object):
         cur = ghx_Container.xpath("./items")[0]
         input_output_info = list()
         Source = list()
-        for c in fetch_content(cur, "name", "Source"):
+        for c in fetch_content(cur, "@name", "Source"):
             print("c.text: ", c.text)
             Source.append(c.text)
         
