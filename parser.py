@@ -2,8 +2,6 @@
 from lxml import etree as et
 from misc import ghx_object_lib as ghxl
 
-
-
 if __name__ == '__main__':
     ghx_path = "./sample/xmlTest.ghx"
     tree = et.parse(ghx_path).getroot()
@@ -12,7 +10,7 @@ if __name__ == '__main__':
     component_list = list()
     for ghx_Object in ghx_DefinitionObjects_chunks:
 
-        print("\n", ghx_Object)
+        print("\n")
         ghxl.print_contents(ghx_Object)
         class_info, instance_info, pos, ghx_list = ghxl.parse_object_chunks(ghx_Object)
         class_guid, class_name = class_info
@@ -31,20 +29,22 @@ if __name__ == '__main__':
         #     ghxl.print_contents(t)
 
         # print("--ghx_Container", ghx_Container)
-        # # ret = list()
-        # ghxl.print_contents(ghx_Container)   
-        # ret = ghxl.fetch_content_recursive(ghx_Container.xpath("./*"), "*!", "_")
+        # ret = list()        
         # for t in ret:
-        #     ghxl.print_contents(t)
+            # ghxl.print_contents(t)
 
         # for t in obj_hash_src:
         #     ghxl.print_contents(t)
 
-        print("--ghx_others")
-        ret = ghxl.fetch_content_recursive(ghx_others, "@name", "Attributes")
-        for t in ret:
-            ghxl.print_contents(t)
+        # print("--ghx_others")
+        # ret = ghxl.fetch_content_recursive(ghx_others, "@name", "Attributes")
+        # for t in ret:
+        #     ghxl.print_contents(t)
         component_list.append(comp)
+        # comp.generate_hash()
+
+for comp in component_list:
+    comp.generate_hash()
 
             
 
