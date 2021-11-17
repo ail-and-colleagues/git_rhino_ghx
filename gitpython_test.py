@@ -7,15 +7,12 @@ print("repo: ", repo)
 
 remote_repo = repo.remotes
 
-print("remote_repo: ", remote_repo)
-print("remote_repo.origin: ", remote_repo.origin)
-print("remote_repo.origin.url: ", remote_repo.origin.url)
-# print("remote_repo.origin.url: ", remote_repo.origin.commit)
 
-fetched = remote_repo.origin.fetch()[0]
-print("fetched: ", fetched.name)
-for blob in fetched.commit.tree.blobs:
-    print(blob.name)
+
+branches = remote_repo.origin.fetch()
+# print("fetched: ", fetched.name)
+for b in branches:
+    print(b.name)
     # if f.commit.tree.blobs.name
 
 
