@@ -53,6 +53,7 @@ if __name__ == '__main__':
     ghx_ObjectCount, ghx_DefinitionObjects_chunks = ghxl.fetch_objects_chunks(tree)
    
     component_list = parse_components(ghx_DefinitionObjects_chunks)
-
-    output_ghx_as_dotpng(component_list, "./sample/xmlTest.dot")
+    out_filename = ghx_path[:ghx_path.rfind(".")] + ".dot"
+    print(out_filename)
+    output_ghx_as_dotpng(component_list, out_filename)
 
