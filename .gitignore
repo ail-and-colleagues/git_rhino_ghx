@@ -1,5 +1,5 @@
 *.dot
-
+test_snippets/
 *.sqlite
 *.json
 *suo

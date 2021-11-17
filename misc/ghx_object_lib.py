@@ -58,13 +58,13 @@ class Object_Param(Ghx_Content):
 
         Object_Param.parent_table[self.instance_guid] = self.parent_object_guid
     @classmethod
-    def Object_Param_from_ghx(cls, ghx_Param, parent_object_guid, parent_pos):
+    def object_param_from_ghx(cls, ghx_Param, parent_object_guid, parent_pos):
         cur = ghx_Param.xpath("./items")[0]
         guid = fetch_content(cur, "@name", "InstanceGuid")[0].text
         name = fetch_content(cur, "@name", "Name")[0].text
         nick_name = fetch_content(cur, "@name", "NickName")[0].text
         source = list()
-        s_list =  fetch_content(cur, "@name", "source")
+        s_list =  fetch_content(cur, "@name", "Source")
         for s in s_list:
             source.append(s.text)
 
@@ -77,6 +77,11 @@ class Object_Param(Ghx_Content):
         if pos[0] < parent_pos[0]:
             is_input = True
         return cls(guid, name, nick_name, is_input, source, parent_object_guid)
+    def get_display_name(self):
+        ret = self.name
+        if self.nick_name:
+            ret = self.nick_name
+        return ret
 
 class Object(Ghx_Content):
     def __init__(self, class_info, instance_info, input_output_info, ghx_list):
@@ -147,7 +152,7 @@ class Object(Ghx_Content):
             # print("instance_guid: ", instance_guid)
             if t_guid:
                 # input_output_list.append(Object_Param(cur, self))
-                input_output_info.append(Object_Param.Object_Param_from_ghx(cur, instance_guid, pos))
+                input_output_info.append(Object_Param.object_param_from_ghx(cur, instance_guid, pos))
             chunks = cur.xpath("./chunks/chunk")
             for chunk in chunks:
                 recursive_search(chunk)
@@ -157,29 +162,33 @@ class Object(Ghx_Content):
             recursive_search(cur)
         return cls(class_info, instance_info, input_output_info, ghx_list)
 
-    
-    # def fetch_input_output(self):
+    def escape_chars(s):
+        s = s.replace("<", "\<")
+        s = s.replace(">", "\>")
+        s = s.replace("|", "\|")
+        return s
+
 
     def derive_node_desc(self):
         # s.node('struct3', r'hello\nworld |{ b |{c|<here> d|e}| f}| g | h')`
-        if not self.instance_nick_name:
-            self.instance_nick_name = self.instance_name
+        display_name = self.name
+        if self.nick_name:
+            display_name = self.nick_name
 
         desc = ""
         if self.input_list:
             desc += "{"
-            for c in self.input_list:
-                # <TR PORT="l2">l3</TD>
-                desc += "<" + c.InstanceGuid + "> " + c.Name + " |"
+            for c in self.input_list:                
+                desc += "<" + c.instance_guid + "> " + Object.escape_chars(c.get_display_name()) + " |"
             desc = desc[:-1]
             desc += "}|"
             
-        desc += "{<" + self.instance_guid + "> " + self.instance_nick_name + " }"
+        desc += "{<" + self.instance_guid + "> " + Object.escape_chars(display_name) + " }"
         if self.output_list:
             desc += "|{"
             for c in self.output_list:
-                # <TR PORT="l2">l3</TD>
-                desc += "<" + c.InstanceGuid + "> " + c.Name + " |"
+                print(Object.escape_chars(c.get_display_name()))
+                desc += "<" + c.instance_guid + "> " + Object.escape_chars(c.get_display_name()) + " |"
             desc = desc[:-1]
             desc += "}"         
         print(desc)
@@ -190,12 +199,15 @@ class Object(Ghx_Content):
         end = list()
         for c in self.input_list:
             # <TR PORT="l2">l3</TD>
-            for s in c.Source:
+            for s in c.source:
                 # if s in Object_Param.parent_table.keys():
                 parent = Object_Param.parent_table[s]
                 beg.append(parent + ":" + s)
-                end.append(c.parent_object_guid + ":" + c.InstanceGuid)
+                end.append(c.parent_object_guid + ":" + c.instance_guid)
         return beg, end
+
+
+
 
     def generate_hash_src(self, cur, print_src=False):
         src = ""
@@ -255,12 +267,16 @@ class Panel_Object(Object):
         return cls(class_info, instance_info, input_output_info, ghx_list, user_text)
     def derive_node_desc(self):
         # s.node('struct3', r'hello\nworld |{ b |{c|<here> d|e}| f}| g | h')`
-        if not self.instance_nick_name:
-            self.instance_nick_name = self.instance_name
-
         desc = ""
-        desc += "{<" + self.instance_guid + "> " + self.instance_nick_name + " }"
+        
+        display_name = self.name
+        if self.nick_name:
+            display_name += "|" + self.nick_name
+        
+        desc = ""
+        desc += "{<" + self.instance_guid + "> " + Object.escape_chars(display_name) + " }"
         if self.user_text:
-            desc += "|{ " + self.user_text + " }"       
+            desc += "|{ " + Object.escape_chars(self.user_text) + " }"       
         print(desc)
+
         return desc
