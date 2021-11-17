@@ -1,8 +1,6 @@
 
 import git
 
-# https://gitpython.readthedocs.io/en/stable/reference.html
-
 
 repo = git.Repo("./")
 print("repo: ", repo)
