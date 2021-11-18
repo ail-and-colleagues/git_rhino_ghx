@@ -1,9 +1,12 @@
 import sys
 from logging import exception
-import git
 
-from ghx_to_dot import parse_components
-import xml.etree.ElementTree as et
+
+import git
+from git import diff
+from lxml import etree as et
+import difflib
+from misc.xml_lib import Line_to_Xml_Element
 
 class Branch:
     def __init__(self, repo, branch_name):
@@ -49,31 +52,24 @@ class Branch:
             sys.exit()
         return ret
 
+class Diff_Chunk:
+    def __init__(self, diff_chunk):
+        diff_chunk = diff_chunk.split("\n")
+        # remove spaces and the last "@@"
+        self.header = diff_chunk[0].replace(" ", "")[:-2]
+        self.content = diff_chunk[1:]
+        print("Diff_Chnk head: ", self.header)
 
-# from xml.etree.ElementTree import XMLParser
-# >>> class MaxDepth:                     # The target object of the parser
-# ...     maxDepth = 0
-# ...     depth = 0
-# ...     def start(self, tag, attrib):   # Called for each opening tag.
-# ...         self.depth += 1
-# ...         if self.depth > self.maxDepth:
-# ...             self.maxDepth = self.depth
-# ...     def end(self, tag):             # Called for each closing tag.
-# ...         self.depth -= 1
-# ...     def data(self, data):
-# ...         pass            # We do not need to do anything with data.
-# ...     def close(self):    # Called when all data has been parsed.
-# ...         return self.maxDepth
+class Diff_Mgr:
+    def __init__(self, unified_diff):
+        diff = "\n".join([str(d) for d in unified_diff])
+        # print(diff)
+        diff = diff.split("\n@@")
+        self.diff_chunk_list = list()
+        # diff[0] is a header-like description of unified_diff.
+        for i, d in enumerate(diff[1:]):
+            self.diff_chunk_list.append(Diff_Chunk(d))
 
-# class line_to_xml_element:
-#     def __init__(self):
-#         self.is_end = False
-#         self.map = list()
-#         self.depth = 0
-#         self.element_idx = 0
-#         def start(self, tag, attrib):
-#             self.depth += 1
-#             print("start: ", tag, attrib)
 
 
 
@@ -83,7 +79,57 @@ left_branch = Branch(repo, "main")
 right_branch = Branch(repo, "test")
 print(left_branch.blob_dict.keys())
 
-left = left_branch.fetch_blob("./sample/xmlTest.ghx")
+target_file_name = "./sample/xmlTest.ghx"
+left = left_branch.fetch_blob(target_file_name)
+right = right_branch.fetch_blob(target_file_name)
 
-print(left.data_stream.read().decode("utf-8"))
-# print(left.branch.commit.tree.trees[0].path)
+left_decoded = left.data_stream.read().decode("utf-8")
+right_decoded = right.data_stream.read().decode("utf-8")
+
+# print(left_decoded)
+parser = et.XMLParser(target=Line_to_Xml_Element())
+parser.feed(left_decoded)
+l_map = parser.close()
+
+parser = et.XMLParser(target=Line_to_Xml_Element())
+parser.feed(right_decoded)
+r_map = parser.close()
+
+print("l_map[:15]")
+print(l_map[:15])
+
+print("r_map[:15]")
+print(r_map[:15])
+
+unified_diff = difflib.unified_diff(left_decoded.split("\n"), right_decoded.split("\n"))
+print("unified_diff: ", unified_diff)
+
+# for i, d in enumerate(unified_diff):
+#     print(d)
+
+diff_mgr = Diff_Mgr(unified_diff)
+
+# k = 88 - 1
+# l_xml = et.fromstring(left_decoded)
+# print(l_xml)
+# # t_elem = l_xml
+# t_idx = l_map[k]
+# t_elem = l_xml.xpath("//*")[t_idx]
+# print(t_elem.tag, t_elem.attrib, t_elem.text)
+# print(left_decoded.split("\n")[k])
+
+test_diff = """
+@@ -85,9 +85,9 @@
+
+         </chunk>
+         <chunk name="DefinitionObjects">
+           <items count="1">
+-            <item name="ObjectCount" type_name="gh_int32" type_code="3">14</item>
++            <item name="ObjectCount" type_name="gh_int32" type_code="3">16</item>
+           </items>
+-          <chunks count="14">
++          <chunks count="16">
+             <chunk name="Object" index="0">
+               <items count="2">
+                 <item name="GUID" type_name="gh_guid" type_code="9">59e0b89a-e487-49f8-bab8-b5bab16be14c</item>
+"""
