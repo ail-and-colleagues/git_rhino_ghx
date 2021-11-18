@@ -55,7 +55,7 @@ class Branch:
 class Diff_Chunk:
     def __init__(self, diff_chunk):
         diff_chunk = diff_chunk.split("\n")
-        # remove spaces and the last "@@"
+        # remove spaces and the last "@@" from the header.
         self.header = diff_chunk[0].replace(" ", "")[:-2]
         self.content = diff_chunk[1:]
         print("Diff_Chnk head: ", self.header)
@@ -69,8 +69,6 @@ class Diff_Mgr:
         # diff[0] is a header-like description of unified_diff.
         for i, d in enumerate(diff[1:]):
             self.diff_chunk_list.append(Diff_Chunk(d))
-
-
 
 
 repo = git.Repo("./")
