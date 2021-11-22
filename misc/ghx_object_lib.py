@@ -9,14 +9,8 @@ from misc.xml_lib import *
 
 
 def generate_group_obj_xelem(object_index, nick_name, group_target, color_string="255;0;0;0"):
-        dummy_instance_guid = uuid.uuid1()#hashlib.shake_128(str(time.time()).encode()).hexdigest()
-        # a95ea66b-4927-11ec-864c-f02f7421c407
-        # d169e6c5-a060-4cf0-895b-5843e2761cf6
-        print("dummy_instance_guid: ", dummy_instance_guid)
+        dummy_instance_guid = uuid.uuid1()
 
-        # <item name="ID" index="0" type_name="gh_guid" type_code="9">d169e6c5-a060-4cf0-895b-5843e2761cf6</item>
-        # <item name="ID" index="1" type_name="gh_guid" type_code="9">21b8775e-9d96-4913-9a35-4f729905192c</item>
-        # <item name="ID_Count" type_name="gh_int32" type_code="3">2</item>
         id_count = len(group_target)
         target_desc = ""
         for i, gt in enumerate(group_target):
@@ -52,82 +46,84 @@ def generate_group_obj_xelem(object_index, nick_name, group_target, color_string
         return xelem_desc
 
 def fetch_object_xelements(changed_xelements):
-    changed_object_xelements =[fetch_parent_by_attrib(t, "@name=\"Object\"") 
+    changed_object_xelements =[fetch_ancestor_by_attrib(t, "@name=\"Object\"") 
         for t in changed_xelements]
     changed_object_xelements = list(set(changed_object_xelements))
     changed_object_xelements = [t for t in changed_object_xelements if t is not None]
     return changed_object_xelements
 
 def fetch_objects_chunks(ghx_root):
-
     root = ghx_root
     # ghxl.print_contents(root)
-    ghx_Definition = fetch_content(root.xpath("/Archive/chunks/*"), "@name", "Definition")[0]
+    # ghx_Definition = fetch_content(root.xpath("/Archive/chunks/*"), "@name", "Definition")[0]
+    cur = root.xpath("/Archive/chunks")[0]
+    ghx_Definition = fetch_children_by_attrib(cur, "@name=\"Definition\"")[0]
     print_contents(ghx_Definition)
-    ghx_DefinitionObjects = fetch_content(ghx_Definition.xpath("./chunks/*"), "@name", "DefinitionObjects")[0]
-    # ghxl.print_contents(ghx_DefinitionObjects)
-    ghx_ObjectCount = fetch_content(ghx_DefinitionObjects.xpath("./items/*"), "@name", "ObjectCount")[0]
-    ghx_DefinitionObjects_chunks = fetch_content(ghx_DefinitionObjects.xpath("./chunks/*"), "@name", "Object")
+    cur = ghx_Definition.xpath("./chunks")[0]
+    ghx_DefinitionObjects = fetch_children_by_attrib(cur, "@name=\"DefinitionObjects\"")[0]
+    print_contents(ghx_DefinitionObjects)
+    cur = ghx_DefinitionObjects.xpath("./items")[0]
+    ghx_ObjectCount = fetch_children_by_attrib(cur, "@name=\"ObjectCount\"")[0]
+    cur = ghx_DefinitionObjects.xpath("./chunks")[0]
+    ghx_DefinitionObjects_chunks = fetch_children_by_attrib(cur, "@name=\"Object\"")
     return ghx_ObjectCount, ghx_DefinitionObjects_chunks
     
-def parse_object_chunks(ghx_object_chunk):
-    ghx_Object_items = ghx_object_chunk.xpath("./items")[0]
-    # print_contents(ghx_Object_items)
+def fetch_obj_class_info(obj_xelem):
+    class_guid = fetch_children_by_attrib(obj_xelem.xpath("./items")[0], "@name=\"GUID\"")[0].text
+    class_name = fetch_children_by_attrib(obj_xelem.xpath("./items")[0], "@name=\"Name\"")[0].text
+    # print("class guid: ", class_guid, ", name: ", class_name)
+    return class_guid, class_name
 
-    ghx_Object_Container = fetch_content(ghx_object_chunk.xpath("./chunks/*"), "@name", "Container")[0]
-    # ghx_Object_Container_items = ghx_Object_Container.xpath("./items")[0]
-
-    ghx_Object_Attributes = fetch_content(ghx_Object_Container.xpath("./chunks/*"), "@name", "Attributes")[0]
-
-    ghx_Object_others  = fetch_content(ghx_Object_Container.xpath("./chunks/*"), "@name!", "Attributes")
-    # print("ghx_Object_Attributes: ", ghx_Object_Attributes)
-    # print("ghx_Object_others: ", ghx_Object_others)
-
-    class_info, instance_info, pos, ghx_list = Object.fetch_common_info(ghx_Object_items, ghx_Object_Container, ghx_Object_Attributes, ghx_Object_others)
-    return class_info, instance_info, pos, ghx_list
+def fetch_instance_info_from_obj_xelement(obj_xelem):
+    container = fetch_descendants_by_attrib(obj_xelem.xpath("./chunks")[0], "@name=\"Container\"")
+    instance_guid = fetch_descendants_by_attrib(container[0], "@name=\"InstanceGuid\"")[0].text
+    name = fetch_descendants_by_attrib(container[0], "@name=\"Name\"")[0].text
+    nick_name = fetch_descendants_by_attrib(container[0], "@name=\"NickName\"")[0].text
+    # print("instance_guid: ", instance_guid, ", name: ", name, ", nick_name: ", nick_name)
+    return instance_guid, name, nick_name
 
 class Ghx_Content:
-
-    def __init__(self, instance_guid, name, nick_name):
+    def __init__(self, src_xelems, instance_guid, name, nick_name):
+        self.src_xelems = src_xelems
         self.instance_guid = instance_guid
         self.name = name
         self.nick_name = nick_name
         pass
 
-
 class Object_Param(Ghx_Content):
     parent_table = dict()
-    def __init__(self, instance_guid, name, nick_name, is_input, source, parent_object_guid):
-        super().__init__(instance_guid, name, nick_name)
+    def __init__(self, src_xelems, instance_guid, name, nick_name, is_input, source, parent_object_guid, ):
+        super().__init__(src_xelems, instance_guid, name, nick_name)
         self.is_input = is_input
         self.source = source
         self.parent_object_guid = parent_object_guid
 
-        print("instance_guid: ", self.instance_guid, ", name: ", self.name, ", nick_name: ", self.nick_name)
-        print("source: ", len(self.source), ", ", self.source)
-        print("is_input: ", self.is_input)
+        # print("param_guid: ", self.instance_guid, ", name: ", self.name, ", nick_name: ", self.nick_name)
+        # print("source: ", len(self.source), ", ", self.source)
+        # print("is_input: ", self.is_input)
 
         Object_Param.parent_table[self.instance_guid] = self.parent_object_guid
     @classmethod
-    def object_param_from_ghx(cls, ghx_Param, parent_object_guid, parent_pos):
-        cur = ghx_Param.xpath("./items")[0]
-        guid = fetch_content(cur, "@name", "InstanceGuid")[0].text
-        name = fetch_content(cur, "@name", "Name")[0].text
-        nick_name = fetch_content(cur, "@name", "NickName")[0].text
+    def object_param_from_ghx(cls, src_xelems, parent_object_guid, parent_pos):
+        cur = src_xelems.xpath("./items")[0]
+        guid = fetch_children_by_attrib(cur, "@name='InstanceGuid'")[0].text
+        name = fetch_children_by_attrib(cur, "@name='Name'")[0].text
+        nick_name = fetch_children_by_attrib(cur, "@name='NickName'")[0].text
         source = list()
-        s_list =  fetch_content(cur, "@name", "Source")
+        s_list =  fetch_children_by_attrib(cur, "@name='Source'")
         for s in s_list:
             source.append(s.text)
 
-        cur = ghx_Param.xpath("./chunks/*")
-        cur = fetch_content(cur, "@name", "Attributes")[0]
-        cur = fetch_content(cur.xpath("./items/*"), "@name", "Pivot")[0]
+        cur = src_xelems.xpath("./chunks")[0]
+        cur = fetch_children_by_attrib(cur, "@name='Attributes'")[0]
+        cur = cur.xpath("./items")[0]
+        ghx_Pivot = fetch_children_by_attrib(cur, "@name='Pivot'")[0]
 
-        pos = [float(cur.xpath("./X")[0].text), float(cur.xpath("./Y")[0].text)]
+        pos = [float(ghx_Pivot.xpath("./X")[0].text), float(ghx_Pivot.xpath("./Y")[0].text)]
         is_input = False
         if pos[0] < parent_pos[0]:
             is_input = True
-        return cls(guid, name, nick_name, is_input, source, parent_object_guid)
+        return cls(src_xelems, guid, name, nick_name, is_input, source, parent_object_guid)
     def get_display_name(self):
         ret = self.name
         if self.nick_name:
@@ -135,20 +131,15 @@ class Object_Param(Ghx_Content):
         return ret
 
 class Object(Ghx_Content):
-    def __init__(self, class_info, instance_info, input_output_info, ghx_list):
-        
-        print("Object __init__")
-        
-        self.class_guid, self.class_name = class_info
-        instance_guid, name, nick_name = instance_info
-        super().__init__(instance_guid, name, nick_name)
-        self.ghx_items, self.ghx_Container, self.ghx_Attributes, self.ghx_others = ghx_list
+    def __init__(self, obj_xelem, input_output_info):
 
+        instance_guid, name, nick_name = fetch_instance_info_from_obj_xelement(obj_xelem)
+        super().__init__(obj_xelem, instance_guid, name, nick_name)
+        
         self.input_list = list()
         self.output_list = list()
 
-        print("class guid: ", self.class_guid, ", name: ", self.class_name)
-        print("inst guid: ", self.instance_guid, ", name: ", self.name, ", nickname: ", self.nick_name)
+        # print("inst guid: ", self.instance_guid, ", name: ", self.name, ", nickname: ", self.nick_name)
 
         for param in input_output_info:
             if param.is_input:
@@ -164,61 +155,31 @@ class Object(Ghx_Content):
             print("\t Name: ", c.name, c.instance_guid)#, c.source)
 
     @classmethod
-    def fetch_common_info(cls, ghx_items, ghx_Container, ghx_Attributes, ghx_others):
-        ## retrieve class info/.
-        class_guid = fetch_content(ghx_items, "@name", "GUID")[0].text
-        class_name = fetch_content(ghx_items, "@name", "Name")[0].text
-        print("class guid: ", class_guid, ", name: ", class_name)
+    def Generic_Object(cls, obj_xelem):
+        instance_guid, name, nick_name = fetch_instance_info_from_obj_xelement(obj_xelem)
+        print("instance_guid: ", instance_guid, ", name: ", name, ", nick_name: ", nick_name)
+        cur = obj_xelem.xpath("./chunks")[0]
+        container_xelem =  fetch_children_by_attrib(cur, "@name=\"Container\"")[0]
+        cur = container_xelem.xpath("./chunks")[0]
+        attrib_xelem = fetch_children_by_attrib(cur, "@name='Attributes'")[0]
+        cur = attrib_xelem.xpath("./items")[0]
+        pivot_xelem = fetch_children_by_attrib(cur, "@name='Pivot'")[0]
+        pos = [float(pivot_xelem.xpath("./X")[0].text), float(pivot_xelem.xpath("./Y")[0].text)]
 
-        ## retrieve instance info.
-        cur = ghx_Container.xpath("./items")[0]
-        instance_guid = fetch_content(cur, "@name", "InstanceGuid")[0].text
-        instance_name = fetch_content(cur, "@name", "Name")[0].text
-        instance_nick_name = fetch_content(cur, "@name", "NickName")[0].text
-        print("inst guid: ", instance_guid, ", name: ", instance_name, ", nickname: ", instance_nick_name)
-
-        ## retrive instaice pos.
-        cur = ghx_Attributes.xpath("./items/*")
-        ghx_Pivot = fetch_content(cur, "@name", "Pivot")
-        if ghx_Pivot:
-            pos = [float(ghx_Pivot[0].xpath("./X")[0].text), float(ghx_Pivot[0].xpath("./Y")[0].text)]
-            print("inst pos: ", pos)
-            class_info = (class_guid, class_name)
-            instance_info = (instance_guid, instance_name, instance_nick_name)
-        else:
-            # Group doesn't have pos
-            pos = None
-        return class_info, instance_info, pos, (ghx_items, ghx_Container, ghx_Attributes, ghx_others)
-
-    @classmethod
-    def Generic_Object(cls, class_info, instance_info, pos, ghx_list):
-        class_guid, class_name = class_info
-        instance_guid, instance_name, instance_nick_name = instance_info
-        ghx_items, ghx_Container, ghx_Attributes, ghx_others = ghx_list
-
-        # fetch input
-        def recursive_search(cur):
-            # print_contents(cur)
-            t_guid = fetch_content(cur.xpath("./items/*"), "@name", "InstanceGuid")
-            # print("instance_guid: ", instance_guid)
-            if t_guid:
-                # input_output_list.append(Object_Param(cur, self))
-                input_output_info.append(Object_Param.object_param_from_ghx(cur, instance_guid, pos))
-            chunks = cur.xpath("./chunks/chunk")
-            for chunk in chunks:
-                recursive_search(chunk)
-        
         input_output_info = list()
-        for cur in ghx_others:
-            recursive_search(cur)
-        return cls(class_info, instance_info, input_output_info, ghx_list)
+        cur = container_xelem.xpath("./chunks")[0]        
+        input_output_xelems = fetch_descendants_by_attrib(cur, "@name='InstanceGuid'")
+        for t in input_output_xelems:
+            t = t.xpath("..")[0].xpath("..")[0]
+            input_output_info.append(Object_Param.object_param_from_ghx(t, instance_guid, pos))
+
+        return cls(obj_xelem, input_output_info)
 
     def escape_chars(s):
         s = s.replace("<", "\<")
         s = s.replace(">", "\>")
         s = s.replace("|", "\|")
         return s
-
 
     def derive_node_desc(self):
         # s.node('struct3', r'hello\nworld |{ b |{c|<here> d|e}| f}| g | h')`
@@ -249,77 +210,58 @@ class Object(Ghx_Content):
         beg = list()
         end = list()
         for c in self.input_list:
-            # <TR PORT="l2">l3</TD>
             for s in c.source:
-                # if s in Object_Param.parent_table.keys():
                 parent = Object_Param.parent_table[s]
                 beg.append(parent + ":" + s)
                 end.append(c.parent_object_guid + ":" + c.instance_guid)
         return beg, end
 
-
-
-
-    def generate_hash_src(self, cur, print_src=False):
-        src = ""
-        ret = fetch_content_recursive(cur.xpath("./*"), "@name", "Attributes")
-        for t in ret:
-            src += print_contents(t, silent=print_src) + "\n"
-        return src
-
     def generate_hash(self):
-    
-        src = self.generate_hash_src(self.ghx_items)
-        class_hash =  hashlib.sha1(src.encode('utf-8')).hexdigest()
+        hash_src = ""
+        ## creating new tree may be the easiest way to get all descendants.
+        desc = et.ElementTree(self.src_xelems).xpath("//*")
+        # print("len(desc): ", len(desc))
+        ## remove the first item, because it includes an object index of .ghx.
+        for c in desc[1:]:
+            hash_src += print_contents(c, silent=True)
 
-        src = self.generate_hash_src(self.ghx_Container)
-        container_hash =  hashlib.sha1(src.encode('utf-8')).hexdigest()
-
-        src = ""
-        for cur in self.ghx_others:
-            src += self.generate_hash_src(cur)
-        io_param_hash = hashlib.sha1(src.encode('utf-8')).hexdigest()
-
-
-        print(hashlib.sha1(src.encode('utf-8')).hexdigest())
-
-
+        # print(hashlib.sha1(hash_src.encode('utf-8')).hexdigest())
+        return hashlib.sha1(hash_src.encode('utf-8')).hexdigest()
 
 class Panel_Object(Object):
-    def __init__(self, class_info, instance_info, input_output_info, ghx_list, user_text):
-        super().__init__(class_info, instance_info, input_output_info, ghx_list)
+    def __init__(self, obj_xelem, input_output_info, user_text):
+        super().__init__(obj_xelem, input_output_info)
         self.user_text = user_text
 
     @classmethod
-    def Panel_Object(cls, class_info, instance_info, pos, ghx_list):
-        class_guid, class_name = class_info
-        instance_guid, instance_name, instance_nick_name = instance_info
-        ghx_items, ghx_Container, ghx_Attributes, ghx_others = ghx_list
-
+    def Panel_Object(cls, obj_xelem):
+        instance_guid, name, nick_name = fetch_instance_info_from_obj_xelement(obj_xelem)
+        print("instance_guid: ", instance_guid, ", name: ", name, ", nick_name: ", nick_name)
+        cur = obj_xelem.xpath("./chunks")[0]
+        container_xelem =  fetch_children_by_attrib(cur, "@name=\"Container\"")[0]
         # fetch user text
-        cur = ghx_Container.xpath("./items")[0]
+        cur = container_xelem.xpath("./items")[0]
         user_text = ""
-        if fetch_content(cur, "@name", "SourceCount")[0].text == "0":
-            user_text = fetch_content(cur, "@name", "UserText")[0].text
-        # user_text = t
+        source_count = fetch_children_by_attrib(cur, "@name=\"SourceCount\"")[0].text
+        if source_count == "0":
+            user_text = fetch_children_by_attrib(cur, "@name='UserText'")[0].text
         print("user_text: ", user_text)
 
         # fetch input
-        cur = ghx_Container.xpath("./items")[0]
+        cur = container_xelem.xpath("./items")[0]
         input_output_info = list()
-        Source = list()
-        for c in fetch_content(cur, "@name", "Source"):
-            print("c.text: ", c.text)
-            Source.append(c.text)
+        source = list()
+        source_xelems = fetch_children_by_attrib(cur, "@name='Source'")
+        for c in source_xelems:
+            source.append(c.text)
         
         isInput = True
-        input_output_info.append(Object_Param(instance_guid, "in", "in", isInput, Source, instance_guid))
+        input_output_info.append(Object_Param(source_xelems, instance_guid, "in", "in", isInput, source, instance_guid))
         
-        return cls(class_info, instance_info, input_output_info, ghx_list, user_text)
+        return cls(obj_xelem, input_output_info, user_text)
     def derive_node_desc(self):
         # s.node('struct3', r'hello\nworld |{ b |{c|<here> d|e}| f}| g | h')`
         desc = ""
-        
         display_name = self.name
         if self.nick_name:
             display_name += "|" + self.nick_name

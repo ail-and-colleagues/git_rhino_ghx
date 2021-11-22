@@ -5,19 +5,27 @@ def string_parser(pattern, src):
     return parse(pattern, src)
 
 def fetch_children_by_attrib(cur, attrib):
+    children = cur.xpath("./*")
+    ret = list()
+    for c in children:
+        if c.xpath(attrib):
+            ret.append(c)
+    return ret
+
+
+def fetch_descendants_by_attrib(cur, attrib):
     children = cur.xpath(attrib)
-    # print("children: ", children)
     if children:
         return [cur]
     else:
         children = cur.xpath("./*")
         ret = list()
         for c in children:
-            ret += fetch_children_by_attrib(c, attrib)
+            ret += fetch_descendants_by_attrib(c, attrib)
         return ret
-def fetch_parent_by_attrib(cur, attrib):
+
+def fetch_ancestor_by_attrib(cur, attrib):
     parent = cur.xpath("..")
-    
     if not parent:
         return None
     else:
@@ -26,8 +34,7 @@ def fetch_parent_by_attrib(cur, attrib):
         if ret:
             return parent[0]
         else:
-            return fetch_parent_by_attrib(parent[0], attrib)
-
+            return fetch_ancestor_by_attrib(parent[0], attrib)
 
 
 def print_contents(cur, silent=False):
@@ -42,33 +49,6 @@ def print_contents(cur, silent=False):
         ret += ", text: {}".format(cur.text) 
     if not silent:
         print(ret)
-    return ret
-
-
-
-def fetch_content(cur, att_key, att_val, returnOthers=False):
-    # https://stackoverflow.com/questions/2243131/getting-certain-attribute-value-using-xpath
-    ret = list()
-    others = list()
-    for c in cur:
-        t = c.xpath( att_key + "=\"" + att_val + "\"")
-        if t:
-            ret.append(c)
-        else:
-            others.append(c)
-
-    if returnOthers:
-        return ret, others
-    
-    return ret
-
-def fetch_content_recursive(cur, att_key, att_val):
-    ret = list()
-    _, cur = fetch_content(cur, att_key, att_val, returnOthers=True)
-
-    for child in cur:
-        ret.append(child)
-        ret += fetch_content_recursive(child.xpath("./*"), att_key, att_val)
     return ret
 
 
