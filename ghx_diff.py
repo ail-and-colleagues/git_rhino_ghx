@@ -207,7 +207,7 @@ modified_guids = [t.instance_guid for t in modified_comps]
 added_guids = [t.instance_guid for t in added_comps]
 aft_xml = indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, added_guids)
 out_filename = target_file_name[:target_file_name.rfind(".")]
-out_filename += "(diff_{}->{}).ghx".format(bef_branch.branch.name, aft_branch.branch.name) 
+out_filename += "_ditt({}_to_{}).ghx".format(bef_branch.branch.name, aft_branch.branch.name) 
 et.ElementTree(aft_xml).write(
     out_filename,
     pretty_print = True,
