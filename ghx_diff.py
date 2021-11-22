@@ -59,29 +59,73 @@ class Branch:
             sys.exit()
         return ret
 
-def indicate_changed_objects_as_group(tgt_xml, removed_guids, modified_guids, added_guids):
+# def indicate_changed_objects_as_group(tgt_xml, removed_guids, modified_guids, added_guids):
+#     ## updates obj(=component) count
+#     ## obj count is noted at:
+#     ## - <chunk name="DefinitionObjects">/<item name="ObjectCount"~>
+#     ## - <chunk name="DefinitionObjects">/<chunks count="16">
+
+#     object_count_xelem = fetch_descendants_by_attrib(tgt_xml, "@name=\"ObjectCount\"")[0]
+#     obj_count = int(object_count_xelem.text)
+#     p = 1 if len(removed_guids) else 0
+#     p = p + 1 if len(modified_guids) else p
+#     p = p + 1 if len(added_guids) else p
+
+#     object_count_xelem.text = str(obj_count + p)
+#     definition_objects_xelem = fetch_descendants_by_attrib(tgt_xml, "@name=\"DefinitionObjects\"")[0]
+#     def_objs_chunks_xelem = definition_objects_xelem.xpath("chunks")[0]
+#     def_objs_chunks_xelem.attrib["count"] = object_count_xelem.text
+
+#     # insert group 
+#     # removed
+#     if len(removed_guids):
+#         desc = ghxl.generate_group_obj_xelem(obj_count, "removed_cmps", removed_guids, "255;255;127;127")
+#         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
+#         obj_count += 1
+#     if len(modified_guids):
+#         desc = ghxl.generate_group_obj_xelem(obj_count, "modified_cmps", modified_guids, "255;127;255;255")
+#         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
+#         obj_count += 1
+#     if len(added_guids):
+#         desc = ghxl.generate_group_obj_xelem(obj_count, "added_cmps", added_guids, "255;127;255;127")
+#         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
+#         obj_count += 1
+
+#     return tgt_xml
+
+def indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, added_guids):
     ## updates obj(=component) count
     ## obj count is noted at:
     ## - <chunk name="DefinitionObjects">/<item name="ObjectCount"~>
     ## - <chunk name="DefinitionObjects">/<chunks count="16">
 
-    object_count_xelem = fetch_descendants_by_attrib(tgt_xml, "@name=\"ObjectCount\"")[0]
+    object_count_xelem = fetch_descendants_by_attrib(aft_xml, "@name=\"ObjectCount\"")[0]
     obj_count = int(object_count_xelem.text)
-    p = 1 if len(removed_guids) else 0
+    p = len(removed_comps)
+    p = p + 1 if len(removed_comps) else p
     p = p + 1 if len(modified_guids) else p
     p = p + 1 if len(added_guids) else p
 
     object_count_xelem.text = str(obj_count + p)
-    definition_objects_xelem = fetch_descendants_by_attrib(tgt_xml, "@name=\"DefinitionObjects\"")[0]
+    definition_objects_xelem = fetch_descendants_by_attrib(aft_xml, "@name=\"DefinitionObjects\"")[0]
     def_objs_chunks_xelem = definition_objects_xelem.xpath("chunks")[0]
     def_objs_chunks_xelem.attrib["count"] = object_count_xelem.text
 
     # insert group 
     # removed
-    if len(removed_guids):
+
+    for removed_comp in removed_comps:
+        removed_comp.src_xelems.attrib["index"] = str(obj_count)
+        t = et.ElementTree(removed_comp.src_xelems).getroot()
+        print(t)
+        def_objs_chunks_xelem.insert(obj_count, t)
+        obj_count += 1
+    if len(removed_comps):
+        removed_guids = [t.instance_guid for t in removed_comps]
         desc = ghxl.generate_group_obj_xelem(obj_count, "removed_cmps", removed_guids, "255;255;127;127")
         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
         obj_count += 1
+          
     if len(modified_guids):
         desc = ghxl.generate_group_obj_xelem(obj_count, "modified_cmps", modified_guids, "255;127;255;255")
         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
@@ -91,7 +135,7 @@ def indicate_changed_objects_as_group(tgt_xml, removed_guids, modified_guids, ad
         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
         obj_count += 1
 
-    return tgt_xml
+    return aft_xml
 
 
 repo = git.Repo("./")
@@ -130,42 +174,40 @@ def Generate_guid_hash_pair(tgt_xml):
             comp.generate_hash()
     ret = dict()
     for c in component_list:
-        ret[c.instance_guid] = c.generate_hash() 
+        ret[c.instance_guid] = (c.generate_hash(), c) 
     return ret
-#38471e2d-36ae-491b-ad94-c15944b8ac48
-# bfe2fcec6882172ed735438b2fb27e4d164aa830
 
-# 362ece106819b2d8287c8088aa3e78217204379b
 bef_guid_hash = Generate_guid_hash_pair(bef_xml)
 aft_guid_hach = Generate_guid_hash_pair(aft_xml)
 
 
-removed_guids = [guid for guid, hash in bef_guid_hash.items() if guid not in aft_guid_hach.keys()]
-print("removed_guids: ", removed_guids)
+removed_comps= [comp for guid, (hash, comp) in bef_guid_hash.items() if guid not in aft_guid_hach.keys()]
+print("removed_guids: ", [t.instance_guid for t in removed_comps])
 
-modified_guids = [guid for guid, hash in bef_guid_hash.items()
-    if (guid in aft_guid_hach.keys() and hash != aft_guid_hach[guid])]
-print("modified_guids: ", modified_guids)
+modified_comps = [comp for guid, (hash, comp) in bef_guid_hash.items()
+    if (guid in aft_guid_hach.keys() and hash != aft_guid_hach[guid][0])]
+print("modified_guids: ", [t.instance_guid for t in modified_comps])
 
-unmodified_guids = [guid for guid, hash in bef_guid_hash.items()
-    if (guid in aft_guid_hach.keys() and hash == aft_guid_hach[guid])]
-print("unmodified_guids: ", unmodified_guids)
+unmodified_comps = [comp for guid, (hash, comp) in bef_guid_hash.items()
+    if (guid in aft_guid_hach.keys() and hash == aft_guid_hach[guid][0])]
+print("unmodified_guids: ", [t.instance_guid for t in unmodified_comps])
 
-added_guids = [guid for guid, hash in aft_guid_hach.items() if guid not in bef_guid_hash.keys()]
-print("added_guids: ", added_guids)
+added_comps = [comp for guid, (hash, comp) in aft_guid_hach.items() if guid not in bef_guid_hash.keys()]
+print("added_guids: ", [t.instance_guid for t in added_comps])
 
-bef_xml = indicate_changed_objects_as_group(bef_xml, removed_guids, modified_guids, [])
+# bef_xml = indicate_changed_objects_as_group(bef_xml, removed_guids, modified_guids, [])
+# out_filename = target_file_name[:target_file_name.rfind(".")]
+# out_filename += "(bef)_{}.ghx".format(bef_branch.branch.name) 
+# et.ElementTree(bef_xml).write(
+#     out_filename,
+#     pretty_print = True,
+#     xml_declaration = True,
+#     encoding = "utf-8" )
+modified_guids = [t.instance_guid for t in modified_comps]
+added_guids = [t.instance_guid for t in added_comps]
+aft_xml = indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, added_guids)
 out_filename = target_file_name[:target_file_name.rfind(".")]
-out_filename += "(bef)_{}.ghx".format(bef_branch.branch.name) 
-et.ElementTree(bef_xml).write(
-    out_filename,
-    pretty_print = True,
-    xml_declaration = True,
-    encoding = "utf-8" )
-
-aft_xml = indicate_changed_objects_as_group(aft_xml, [], modified_guids, added_guids)
-out_filename = target_file_name[:target_file_name.rfind(".")]
-out_filename += "(aft)_{}.ghx".format(aft_branch.branch.name) 
+out_filename += "(diff_{}->{}).ghx".format(bef_branch.branch.name, aft_branch.branch.name) 
 et.ElementTree(aft_xml).write(
     out_filename,
     pretty_print = True,
