@@ -1,3 +1,34 @@
+from parse import parse
+from lxml import etree as et
+
+def string_parser(pattern, src):
+    return parse(pattern, src)
+
+def fetch_children_by_attrib(cur, attrib):
+    children = cur.xpath(attrib)
+    # print("children: ", children)
+    if children:
+        return [cur]
+    else:
+        children = cur.xpath("./*")
+        ret = list()
+        for c in children:
+            ret += fetch_children_by_attrib(c, attrib)
+        return ret
+def fetch_parent_by_attrib(cur, attrib):
+    parent = cur.xpath("..")
+    
+    if not parent:
+        return None
+    else:
+        # print("fetch_parent_by_attrib tag: ", parent[0].tag, ", attrib:", parent[0].attrib)
+        ret = parent[0].xpath(attrib)
+        if ret:
+            return parent[0]
+        else:
+            return fetch_parent_by_attrib(parent[0], attrib)
+
+
 
 def print_contents(cur, silent=False):
     def chk(t):
@@ -12,6 +43,7 @@ def print_contents(cur, silent=False):
     if not silent:
         print(ret)
     return ret
+
 
 
 def fetch_content(cur, att_key, att_val, returnOthers=False):

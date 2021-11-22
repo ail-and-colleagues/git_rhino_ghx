@@ -1,11 +1,62 @@
 # from lxml import etree as et
 
 # from _typeshed import NoneType
-
+import time
 import hashlib
+import uuid
 from typing import Container
 from misc.xml_lib import *
 
+
+def generate_group_obj_xelem(object_index, nick_name, group_target, color_string="255;0;0;0"):
+        dummy_instance_guid = uuid.uuid1()#hashlib.shake_128(str(time.time()).encode()).hexdigest()
+        # a95ea66b-4927-11ec-864c-f02f7421c407
+        # d169e6c5-a060-4cf0-895b-5843e2761cf6
+        print("dummy_instance_guid: ", dummy_instance_guid)
+
+        # <item name="ID" index="0" type_name="gh_guid" type_code="9">d169e6c5-a060-4cf0-895b-5843e2761cf6</item>
+        # <item name="ID" index="1" type_name="gh_guid" type_code="9">21b8775e-9d96-4913-9a35-4f729905192c</item>
+        # <item name="ID_Count" type_name="gh_int32" type_code="3">2</item>
+        id_count = len(group_target)
+        target_desc = ""
+        for i, gt in enumerate(group_target):
+            target_desc += """<item name="ID" index="{}" type_name="gh_guid" type_code="9">{}</item>""".format(i, gt)
+        target_desc += """<item name="ID_Count" type_name="gh_int32" type_code="3">{}</item>""".format(id_count)
+
+        xelem_desc = """
+            <chunk name="Object" index="{}">
+              <items count="2">
+                <item name="GUID" type_name="gh_guid" type_code="9">c552a431-af5b-46a9-a8a4-0fcbc27ef596</item>
+                <item name="Name" type_name="gh_string" type_code="10">Group</item>
+              </items>
+              <chunks count="1">
+                <chunk name="Container">
+                  <items count="8">
+                    <item name="Border" type_name="gh_int32" type_code="3">3</item>
+                    <item name="Colour" type_name="gh_drawing_color" type_code="36">
+                      <ARGB>{}</ARGB>
+                    </item>
+                    <item name="Description" type_name="gh_string" type_code="10">A group of Grasshopper objects</item>
+                    {}
+                    <item name="InstanceGuid" type_name="gh_guid" type_code="9">{}</item>
+                    <item name="Name" type_name="gh_string" type_code="10">Group</item>
+                    <item name="NickName" type_name="gh_string" type_code="10">{}</item>
+                  </items>
+                  <chunks count="1">
+                    <chunk name="Attributes" />
+                  </chunks>
+                </chunk>
+              </chunks>
+            </chunk>
+        """.format(object_index, color_string, target_desc, dummy_instance_guid, nick_name)
+        return xelem_desc
+
+def fetch_object_xelements(changed_xelements):
+    changed_object_xelements =[fetch_parent_by_attrib(t, "@name=\"Object\"") 
+        for t in changed_xelements]
+    changed_object_xelements = list(set(changed_object_xelements))
+    changed_object_xelements = [t for t in changed_object_xelements if t is not None]
+    return changed_object_xelements
 
 def fetch_objects_chunks(ghx_root):
 
