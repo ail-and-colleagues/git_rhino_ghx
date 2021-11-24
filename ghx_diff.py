@@ -123,14 +123,16 @@ def Generate_guid_hash_pair(tgt_xml):
     return ret
 
 
-
+def escape_branch_name(branch_name):
+    branch_name = branch_name.replace("/", "-")
+    return branch_name
 
 if __name__ == '__main__':
 
     ## specify repo, branch, and blob.
     repo = git.Repo("./")
-    bef_branch = Branch(repo, "main")
-    aft_branch = Branch(repo, "test")
+    bef_branch = Branch(repo, "origin/main")
+    aft_branch = Branch(repo, "main")
     target_file_name = "./sample/xmlTest.ghx"
     
     bef_blob = bef_branch.fetch_blob(target_file_name)
@@ -166,7 +168,9 @@ if __name__ == '__main__':
     aft_xml = indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, added_guids)
     out_filename = target_file_name[:target_file_name.rfind(".")]
     # name output file as {original file name}_ditt({from-branch-name}_to_{to-branch-name})
-    out_filename += "_diff({}_to_{}).ghx".format(bef_branch.branch.name, aft_branch.branch.name) 
+    bef_branch_name = escape_branch_name(bef_branch.branch.name)
+    aft_branch_name = escape_branch_name(aft_branch.branch.name)
+    out_filename += "_diff({}_to_{}).ghx".format(bef_branch_name, aft_branch_name)
     et.ElementTree(aft_xml).write(
         out_filename,
         pretty_print = True,
