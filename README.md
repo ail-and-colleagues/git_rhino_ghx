@@ -15,5 +15,5 @@ conflictした.ghxを比較する際に便利だと思われる。
 ![image](https://user-images.githubusercontent.com/39890894/143174556-d42e2eec-5cf7-40d2-996f-404d885f84bd.png)
 
 ## links
-Version control (grasshpper forum)  
+Version control (grasshopper forum)  
 https://www.grasshopper3d.com/forum/topics/version-control
