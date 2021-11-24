@@ -83,6 +83,7 @@ def fetch_instance_info_from_obj_xelement(obj_xelem):
     return instance_guid, name, nick_name
 
 class Ghx_Content:
+    parent_table = dict()
     def __init__(self, src_xelems, instance_guid, name, nick_name):
         self.src_xelems = src_xelems
         self.instance_guid = instance_guid
@@ -91,7 +92,6 @@ class Ghx_Content:
         pass
 
 class Object_Param(Ghx_Content):
-    parent_table = dict()
     def __init__(self, src_xelems, instance_guid, name, nick_name, is_input, source, parent_object_guid, ):
         super().__init__(src_xelems, instance_guid, name, nick_name)
         self.is_input = is_input
@@ -102,7 +102,7 @@ class Object_Param(Ghx_Content):
         # print("source: ", len(self.source), ", ", self.source)
         # print("is_input: ", self.is_input)
 
-        Object_Param.parent_table[self.instance_guid] = self.parent_object_guid
+        Ghx_Content.parent_table[self.instance_guid] = self.parent_object_guid
     @classmethod
     def object_param_from_ghx(cls, src_xelems, parent_object_guid, parent_pos):
         cur = src_xelems.xpath("./items")[0]
@@ -153,6 +153,7 @@ class Object(Ghx_Content):
         print("output_list")
         for c in self.output_list:
             print("\t Name: ", c.name, c.instance_guid)#, c.source)
+        Ghx_Content.parent_table[self.instance_guid] = self.instance_guid
 
     @classmethod
     def Generic_Object(cls, obj_xelem):
@@ -202,7 +203,8 @@ class Object(Ghx_Content):
                 print(Object.escape_chars(c.get_display_name()))
                 desc += "<" + c.instance_guid + "> " + Object.escape_chars(c.get_display_name()) + " |"
             desc = desc[:-1]
-            desc += "}"         
+            desc += "}"
+            
         print(desc)
         return desc
 
@@ -211,7 +213,7 @@ class Object(Ghx_Content):
         end = list()
         for c in self.input_list:
             for s in c.source:
-                parent = Object_Param.parent_table[s]
+                parent = Ghx_Content.parent_table[s]
                 beg.append(parent + ":" + s)
                 end.append(c.parent_object_guid + ":" + c.instance_guid)
         return beg, end

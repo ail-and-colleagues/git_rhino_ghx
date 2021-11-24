@@ -167,7 +167,7 @@ if __name__ == '__main__':
     added_guids = [t.instance_guid for t in added_comps]
     aft_xml = indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, added_guids)
     out_filename = target_file_name[:target_file_name.rfind(".")]
-    # name output file as {original file name}_ditt({from-branch-name}_to_{to-branch-name})
+    # name output file as {original file name}_diff({from-branch-name}_to_{to-branch-name})
     bef_branch_name = escape_branch_name(bef_branch.branch.name)
     aft_branch_name = escape_branch_name(aft_branch.branch.name)
     out_filename += "_diff({}_to_{}).ghx".format(bef_branch_name, aft_branch_name)
