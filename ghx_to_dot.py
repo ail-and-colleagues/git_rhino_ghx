@@ -11,8 +11,8 @@ def parse_components(tgt_xml):
         print("---")
         _, class_name = ghxl.fetch_obj_class_info(obj_xelem)
         ## grasshopper components do not have unified description format on .ghx(xml).
-        ## so we have to implement a derived class to address
-        ## a component that fails to parse its contents(e.g. slider) with the base class (Generic_Object).
+        ## so we have to implement a derived class to address a component that
+        ## fails to parse or indicate its contents(e.g. slider) with the base class (Generic_Object).
         if class_name == "Panel":
             comp = ghxl.Panel_Object.Panel_Object(obj_xelem)
             component_list.append(comp)
