@@ -17,6 +17,7 @@ def parse_components(ghx_DefinitionObjects_chunks):
         if class_name == "Panel":
             comp = ghxl.Panel_Object.Panel_Object(class_info, instance_info, pos, ghx_list)
         elif class_name == "Group":
+            # do something if we need.
             pass
         else:
             comp = ghxl.Object.Generic_Object(class_info, instance_info, pos, ghx_list)
@@ -32,8 +33,6 @@ def output_ghx_as_dotpng(component_list, out_filename):
         format='png',
         graph_attr={'rankdir': 'LR'},
         node_attr={'shape': 'Mrecord', 'rankdir': 'TB', "fontname":"Consolas"})
-
-# s.node('struct1', '<f0> left|<f1> middle|<f2> right')
 
     for c in component_list:
         s.node(c.instance_guid, c.derive_node_desc())

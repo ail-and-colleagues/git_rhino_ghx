@@ -1,17 +1,12 @@
-from os import remove
+
 import sys
 from logging import exception
-from typing import Container
-
 
 import git
-from git import diff
 from lxml import etree as et
-import difflib
 
 
 from misc.xml_lib import Line_to_Xml_Element, fetch_descendants_by_attrib, string_parser, fetch_children_by_attrib
-# from misc.ghx_object_lib import fetch_object_xelements, generate_group_obj_xelem
 
 from misc import ghx_object_lib as ghxl
 
@@ -59,40 +54,6 @@ class Branch:
             sys.exit()
         return ret
 
-# def indicate_changed_objects_as_group(tgt_xml, removed_guids, modified_guids, added_guids):
-#     ## updates obj(=component) count
-#     ## obj count is noted at:
-#     ## - <chunk name="DefinitionObjects">/<item name="ObjectCount"~>
-#     ## - <chunk name="DefinitionObjects">/<chunks count="16">
-
-#     object_count_xelem = fetch_descendants_by_attrib(tgt_xml, "@name=\"ObjectCount\"")[0]
-#     obj_count = int(object_count_xelem.text)
-#     p = 1 if len(removed_guids) else 0
-#     p = p + 1 if len(modified_guids) else p
-#     p = p + 1 if len(added_guids) else p
-
-#     object_count_xelem.text = str(obj_count + p)
-#     definition_objects_xelem = fetch_descendants_by_attrib(tgt_xml, "@name=\"DefinitionObjects\"")[0]
-#     def_objs_chunks_xelem = definition_objects_xelem.xpath("chunks")[0]
-#     def_objs_chunks_xelem.attrib["count"] = object_count_xelem.text
-
-#     # insert group 
-#     # removed
-#     if len(removed_guids):
-#         desc = ghxl.generate_group_obj_xelem(obj_count, "removed_cmps", removed_guids, "255;255;127;127")
-#         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
-#         obj_count += 1
-#     if len(modified_guids):
-#         desc = ghxl.generate_group_obj_xelem(obj_count, "modified_cmps", modified_guids, "255;127;255;255")
-#         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
-#         obj_count += 1
-#     if len(added_guids):
-#         desc = ghxl.generate_group_obj_xelem(obj_count, "added_cmps", added_guids, "255;127;255;127")
-#         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
-#         obj_count += 1
-
-#     return tgt_xml
-
 def indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, added_guids):
     ## updates obj(=component) count
     ## obj count is noted at:
@@ -111,9 +72,8 @@ def indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, ad
     def_objs_chunks_xelem = definition_objects_xelem.xpath("chunks")[0]
     def_objs_chunks_xelem.attrib["count"] = object_count_xelem.text
 
-    # insert group 
-    # removed
-
+    # insert groups 
+    ## removed
     for removed_comp in removed_comps:
         removed_comp.src_xelems.attrib["index"] = str(obj_count)
         t = et.ElementTree(removed_comp.src_xelems).getroot()
@@ -126,33 +86,18 @@ def indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, ad
         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
         obj_count += 1
           
+    ## modified
     if len(modified_guids):
         desc = ghxl.generate_group_obj_xelem(obj_count, "modified_cmps", modified_guids, "255;127;255;255")
         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
         obj_count += 1
+    ## added
     if len(added_guids):
         desc = ghxl.generate_group_obj_xelem(obj_count, "added_cmps", added_guids, "255;127;255;127")
         def_objs_chunks_xelem.insert(obj_count, et.fromstring(desc))
         obj_count += 1
 
     return aft_xml
-
-
-repo = git.Repo("./")
-
-bef_branch = Branch(repo, "main")
-aft_branch = Branch(repo, "test")
-print(bef_branch.blob_dict.keys())
-
-target_file_name = "./sample/xmlTest.ghx"
-bef_blob = bef_branch.fetch_blob(target_file_name)
-bef_decoded = bef_blob.data_stream.read().decode("utf-8")
-aft_blob = aft_branch.fetch_blob(target_file_name)
-aft_decoded = aft_blob.data_stream.read().decode("utf-8")
-
-
-bef_xml = et.fromstring(bef_decoded)
-aft_xml = et.fromstring(aft_decoded)
 
 
 def Generate_guid_hash_pair(tgt_xml):
@@ -177,41 +122,53 @@ def Generate_guid_hash_pair(tgt_xml):
         ret[c.instance_guid] = (c.generate_hash(), c) 
     return ret
 
-bef_guid_hash = Generate_guid_hash_pair(bef_xml)
-aft_guid_hach = Generate_guid_hash_pair(aft_xml)
 
 
-removed_comps= [comp for guid, (hash, comp) in bef_guid_hash.items() if guid not in aft_guid_hach.keys()]
-print("removed_guids: ", [t.instance_guid for t in removed_comps])
 
-modified_comps = [comp for guid, (hash, comp) in bef_guid_hash.items()
-    if (guid in aft_guid_hach.keys() and hash != aft_guid_hach[guid][0])]
-print("modified_guids: ", [t.instance_guid for t in modified_comps])
+if __name__ == '__main__':
 
-unmodified_comps = [comp for guid, (hash, comp) in bef_guid_hash.items()
-    if (guid in aft_guid_hach.keys() and hash == aft_guid_hach[guid][0])]
-print("unmodified_guids: ", [t.instance_guid for t in unmodified_comps])
+    ## specify repo, branch, and blob.
+    repo = git.Repo("./")
+    bef_branch = Branch(repo, "main")
+    aft_branch = Branch(repo, "test")
+    target_file_name = "./sample/xmlTest.ghx"
+    
+    bef_blob = bef_branch.fetch_blob(target_file_name)
+    bef_decoded = bef_blob.data_stream.read().decode("utf-8")
+    aft_blob = aft_branch.fetch_blob(target_file_name)
+    aft_decoded = aft_blob.data_stream.read().decode("utf-8")
 
-added_comps = [comp for guid, (hash, comp) in aft_guid_hach.items() if guid not in bef_guid_hash.keys()]
-print("added_guids: ", [t.instance_guid for t in added_comps])
+    ## load .ghx as xml.
+    bef_xml = et.fromstring(bef_decoded)
+    aft_xml = et.fromstring(aft_decoded)
 
-# bef_xml = indicate_changed_objects_as_group(bef_xml, removed_guids, modified_guids, [])
-# out_filename = target_file_name[:target_file_name.rfind(".")]
-# out_filename += "(bef)_{}.ghx".format(bef_branch.branch.name) 
-# et.ElementTree(bef_xml).write(
-#     out_filename,
-#     pretty_print = True,
-#     xml_declaration = True,
-#     encoding = "utf-8" )
-modified_guids = [t.instance_guid for t in modified_comps]
-added_guids = [t.instance_guid for t in added_comps]
-aft_xml = indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, added_guids)
-out_filename = target_file_name[:target_file_name.rfind(".")]
-out_filename += "_ditt({}_to_{}).ghx".format(bef_branch.branch.name, aft_branch.branch.name) 
-et.ElementTree(aft_xml).write(
-    out_filename,
-    pretty_print = True,
-    xml_declaration = True,
-    encoding = "utf-8" )
+    ## create pairs of component guid and its hash. 
+    bef_guid_hash = Generate_guid_hash_pair(bef_xml)
+    aft_guid_hach = Generate_guid_hash_pair(aft_xml)
 
+    removed_comps= [comp for guid, (hash, comp) in bef_guid_hash.items() if guid not in aft_guid_hach.keys()]
+    print("removed_guids: ", [t.instance_guid for t in removed_comps])
+    modified_comps = [comp for guid, (hash, comp) in bef_guid_hash.items()
+        if (guid in aft_guid_hach.keys() and hash != aft_guid_hach[guid][0])]
+    print("modified_guids: ", [t.instance_guid for t in modified_comps])
+    unmodified_comps = [comp for guid, (hash, comp) in bef_guid_hash.items()
+        if (guid in aft_guid_hach.keys() and hash == aft_guid_hach[guid][0])]
+    print("unmodified_guids: ", [t.instance_guid for t in unmodified_comps])
+    added_comps = [comp for guid, (hash, comp) in aft_guid_hach.items() if guid not in bef_guid_hash.keys()]
+    print("added_guids: ", [t.instance_guid for t in added_comps])
 
+    ## to reperesent diff in outputted .ghx:
+    ## - insert and group removed components with nick name "removed_cmps".
+    ## - group modified components as "modified_cmps" 
+    ## - group added components as "added_cmps"
+    modified_guids = [t.instance_guid for t in modified_comps]
+    added_guids = [t.instance_guid for t in added_comps]
+    aft_xml = indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, added_guids)
+    out_filename = target_file_name[:target_file_name.rfind(".")]
+    # name output file as {original file name}_ditt({from-branch-name}_to_{to-branch-name})
+    out_filename += "_diff({}_to_{}).ghx".format(bef_branch.branch.name, aft_branch.branch.name) 
+    et.ElementTree(aft_xml).write(
+        out_filename,
+        pretty_print = True,
+        xml_declaration = True,
+        encoding = "utf-8" )
