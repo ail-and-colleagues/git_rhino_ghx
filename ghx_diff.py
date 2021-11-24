@@ -145,8 +145,8 @@ if __name__ == '__main__':
     aft_xml = et.fromstring(aft_decoded)
 
     ## create pairs of component guid and its hash. 
-    bef_guid_hash = Generate_guid_hash_pair(bef_xml)
-    aft_guid_hach = Generate_guid_hash_pair(aft_xml)
+    bef_guid_hash = generate_guid_hash_pair(bef_xml)
+    aft_guid_hach = generate_guid_hash_pair(aft_xml)
 
     removed_comps= [comp for guid, (hash, comp) in bef_guid_hash.items() if guid not in aft_guid_hach.keys()]
     print("removed_guids: ", [t.instance_guid for t in removed_comps])
