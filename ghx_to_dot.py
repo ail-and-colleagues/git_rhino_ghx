@@ -4,26 +4,26 @@ from misc import ghx_object_lib as ghxl
 import graphviz
 ##https://graphviz.readthedocs.io/en/stable/api.html
 
-def parse_components(ghx_DefinitionObjects_chunks):
+def parse_components(tgt_xml):
+    _, obj_xelems = ghxl.fetch_objects_chunks(tgt_xml)
     component_list = list()
-
-    for ghx_Object in ghx_DefinitionObjects_chunks:
-        comp = None
-        print("\n")
-        ghxl.print_contents(ghx_Object)
-        
-        class_info, instance_info, pos, ghx_list = ghxl.parse_object_chunks(ghx_Object)
-        class_guid, class_name = class_info
+    for obj_xelem in obj_xelems:
+        print("---")
+        _, class_name = ghxl.fetch_obj_class_info(obj_xelem)
+        ## grasshopper components do not have unified input/output parameter
+        ## description format on .ghx(xml).
+        ## so we have to implement a derived class to address
+        ##  a component that fails to parse its parameters with the base class (Generic_Object).
         if class_name == "Panel":
-            comp = ghxl.Panel_Object.Panel_Object(class_info, instance_info, pos, ghx_list)
+            comp = ghxl.Panel_Object.Panel_Object(obj_xelem)
+            component_list.append(comp)
+            comp.generate_hash()
         elif class_name == "Group":
-            # do something if we need.
             pass
         else:
-            comp = ghxl.Object.Generic_Object(class_info, instance_info, pos, ghx_list)
-        
-        if comp:
+            comp = ghxl.Object.Generic_Object(obj_xelem)
             component_list.append(comp)
+            comp.generate_hash()
     return component_list
 
 def output_ghx_as_dotpng(component_list, out_filename):
@@ -44,15 +44,14 @@ def output_ghx_as_dotpng(component_list, out_filename):
             print(b, e)
     s.render()
 
-    pass
+
 
 if __name__ == '__main__':
-    ghx_path = "./sample/xmlTest.ghx"
-    tree = et.parse(ghx_path).getroot()
-    ghx_ObjectCount, ghx_DefinitionObjects_chunks = ghxl.fetch_objects_chunks(tree)
+    target_file_name = "./sample/xmlTest.ghx"
+    tgt_ghx = et.parse(target_file_name).getroot()
    
-    component_list = parse_components(ghx_DefinitionObjects_chunks)
-    out_filename = ghx_path[:ghx_path.rfind(".")] + ".dot"
+    component_list = parse_components(tgt_ghx)
+    out_filename = target_file_name[:target_file_name.rfind(".")] + ".dot"
     print(out_filename)
     output_ghx_as_dotpng(component_list, out_filename)
 

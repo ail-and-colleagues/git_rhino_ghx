@@ -100,7 +100,7 @@ def indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, ad
     return aft_xml
 
 
-def Generate_guid_hash_pair(tgt_xml):
+def generate_guid_hash_pair(tgt_xml):
     _, obj_xelems = ghxl.fetch_objects_chunks(tgt_xml)
     component_list = list()
     for obj_xelem in obj_xelems:
