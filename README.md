@@ -11,7 +11,7 @@ conflictした.ghxを比較する際に便利だと思われる。
 ## ghx_to_dot.py
 : Create a network-like graph by parsing .ghx.
 
-アルゴリズムの構成をネットワークのようなグラフで表し.pngで保存します。.ghxが大凡どのような処理であったかGithub上で確認できます。コンポーネントのhashなんかを付記しても便利だと思われる。
+アルゴリズムの構成をネットワークのようなグラフで表し.pngで保存します。.ghxが大凡どのような処理であったかGithub上で確認できます。コンポーネントのhashなんかを付記しても便利だと思われる。  
 ![image](https://user-images.githubusercontent.com/39890894/143174556-d42e2eec-5cf7-40d2-996f-404d885f84bd.png)
 
 ## links
