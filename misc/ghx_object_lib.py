@@ -58,10 +58,10 @@ def fetch_objects_chunks(ghx_root):
     # ghx_Definition = fetch_content(root.xpath("/Archive/chunks/*"), "@name", "Definition")[0]
     cur = root.xpath("/Archive/chunks")[0]
     ghx_Definition = fetch_children_by_attrib(cur, "@name=\"Definition\"")[0]
-    print_contents(ghx_Definition)
+    # print_contents(ghx_Definition)
     cur = ghx_Definition.xpath("./chunks")[0]
     ghx_DefinitionObjects = fetch_children_by_attrib(cur, "@name=\"DefinitionObjects\"")[0]
-    print_contents(ghx_DefinitionObjects)
+    # print_contents(ghx_DefinitionObjects)
     cur = ghx_DefinitionObjects.xpath("./items")[0]
     ghx_ObjectCount = fetch_children_by_attrib(cur, "@name=\"ObjectCount\"")[0]
     cur = ghx_DefinitionObjects.xpath("./chunks")[0]
@@ -218,14 +218,28 @@ class Object(Ghx_Content):
                 end.append(c.parent_object_guid + ":" + c.instance_guid)
         return beg, end
 
-    def generate_hash(self):
+    def generate_hash(self, ignore_cmp_pos):
         hash_src = ""
         ## creating new tree may be the easiest way to get all descendants.
         desc = et.ElementTree(self.src_xelems).xpath("//*")
         # print("len(desc): ", len(desc))
         ## remove the first item, because it includes an object index of .ghx.
+        chunk_or_item = list()
         for c in desc[1:]:
-            hash_src += print_contents(c, silent=True)
+            if c.tag in {"chunks", "chunk", "items", "item"}:
+                chunk_or_item.append(c)
+
+        for cur in chunk_or_item:
+            ignore = False
+            childs = et.ElementTree(cur).xpath("//*")
+            if "type_name" in cur.attrib:
+                if cur.attrib["type_name"] in {"gh_drawing_rectanglef", "gh_drawing_pointf"}:
+                    ignore = True and ignore_cmp_pos
+                    # if ignore:
+                    #     print("skipping contents regarding components pos: ", cur.tag, ", ", cur.attrib)
+            if not ignore:            
+                for c in childs:
+                    hash_src += print_contents(c, silent=True)
 
         # print(hashlib.sha1(hash_src.encode('utf-8')).hexdigest())
         return hashlib.sha1(hash_src.encode('utf-8')).hexdigest()
