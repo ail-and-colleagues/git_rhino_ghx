@@ -1,5 +1,5 @@
 *.dot
-sample/
+#sample/
 test_snippets/
 *.sqlite
 *.json

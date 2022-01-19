@@ -1,13 +1,11 @@
 
 import sys
+import argparse
 from logging import exception
 
 import git
 from lxml import etree as et
-
-
-from misc.xml_lib import Line_to_Xml_Element, fetch_descendants_by_attrib, string_parser, fetch_children_by_attrib
-
+from misc.xml_lib import Line_to_Xml_Element, fetch_descendants_by_attrib
 from misc import ghx_object_lib as ghxl
 
 class Branch:
@@ -101,7 +99,6 @@ def indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, ad
 
 
 def generate_guid_hash_pair(tgt_xml, ignore_cmp_pos):
-    print("generate_guid_hash_pair: ", tgt_xml)
     _, obj_xelems = ghxl.fetch_objects_chunks(tgt_xml)
     component_list = list()
     for obj_xelem in obj_xelems:
@@ -128,11 +125,30 @@ def escape_branch_name(branch_name):
 
 if __name__ == '__main__':
 
+    parser = argparse.ArgumentParser(
+        prog="ghx_diff.py",
+        description="create diff.ghx by specifying .ghx file and branches.",
+        epilog="-",
+        add_help=True
+        )
+    parser.add_argument("-p", "--path_to_repo", help="path to a repository", action="store", type=str, default="./")
+    parser.add_argument("-t", "--target", help="target .ghx file", action="store", type=str, required=True)
+    parser.add_argument("-l", "--left_branch", help="left branch", action="store", type=str, required=True)
+    parser.add_argument("-r", "--right_branch", help="right branch", action="store", type=str, required=True)
+    parser.add_argument("-i", "--ignore_positon", help="ignore component position changes", action="store_true", default=True)
+
+    args = parser.parse_args()
+    print("args.path_to_repo: ", args.path_to_repo)
+    print("args.target: ", args.target)
+    print("args.left_branch: ", args.left_branch)
+    print("args.right_branch: ", args.right_branch)
+    print("args.ignore_positon: ", args.ignore_positon)
+
     ## specify repo, branch, and blob.
-    repo = git.Repo("./")
-    bef_branch = Branch(repo, "origin/main")
-    aft_branch = Branch(repo, "main")
-    target_file_name = "./sample/xmlTest.ghx"
+    repo = git.Repo(args.path_to_repo.replace("\\", "/"))
+    target_file_name = args.target.replace("\\", "/")
+    bef_branch = Branch(repo, args.left_branch)
+    aft_branch = Branch(repo, args.right_branch)
     
     bef_blob = bef_branch.fetch_blob(target_file_name)
     bef_decoded = bef_blob.data_stream.read().decode("utf-8")
@@ -143,9 +159,11 @@ if __name__ == '__main__':
     bef_xml = et.fromstring(bef_decoded)
     aft_xml = et.fromstring(aft_decoded)
 
-    ## create pairs of component guid and its hash. 
-    bef_guid_hash = generate_guid_hash_pair(bef_xml, ignore_cmp_pos=True)
-    aft_guid_hach = generate_guid_hash_pair(aft_xml, ignore_cmp_pos=True)
+    ## create pairs of component guid and its hash.
+    print("args.left_branch: ", args.left_branch, ", args.target: ", args.target)
+    bef_guid_hash = generate_guid_hash_pair(bef_xml, ignore_cmp_pos=args.ignore_positon)
+    print("args.right_branch: ", args.right_branch, ", args.target: ", args.target)
+    aft_guid_hach = generate_guid_hash_pair(aft_xml, ignore_cmp_pos=args.ignore_positon)
 
     removed_comps= [comp for guid, (hash, comp) in bef_guid_hash.items() if guid not in aft_guid_hach.keys()]
     print("removed_guids: ", [t.instance_guid for t in removed_comps])
