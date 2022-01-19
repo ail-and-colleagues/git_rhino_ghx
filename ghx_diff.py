@@ -100,7 +100,8 @@ def indicate_changed_objects_as_group(aft_xml, removed_comps, modified_guids, ad
     return aft_xml
 
 
-def generate_guid_hash_pair(tgt_xml):
+def generate_guid_hash_pair(tgt_xml, ignore_cmp_pos):
+    print("generate_guid_hash_pair: ", tgt_xml)
     _, obj_xelems = ghxl.fetch_objects_chunks(tgt_xml)
     component_list = list()
     for obj_xelem in obj_xelems:
@@ -110,16 +111,14 @@ def generate_guid_hash_pair(tgt_xml):
         if class_name == "Panel":
             comp = ghxl.Panel_Object.Panel_Object(obj_xelem)
             component_list.append(comp)
-            comp.generate_hash()
         elif class_name == "Group":
             pass
         else:
             comp = ghxl.Object.Generic_Object(obj_xelem)
             component_list.append(comp)
-            comp.generate_hash()
     ret = dict()
     for c in component_list:
-        ret[c.instance_guid] = (c.generate_hash(), c) 
+        ret[c.instance_guid] = (c.generate_hash(ignore_cmp_pos=ignore_cmp_pos), c) 
     return ret
 
 
@@ -145,8 +144,8 @@ if __name__ == '__main__':
     aft_xml = et.fromstring(aft_decoded)
 
     ## create pairs of component guid and its hash. 
-    bef_guid_hash = generate_guid_hash_pair(bef_xml)
-    aft_guid_hach = generate_guid_hash_pair(aft_xml)
+    bef_guid_hash = generate_guid_hash_pair(bef_xml, ignore_cmp_pos=True)
+    aft_guid_hach = generate_guid_hash_pair(aft_xml, ignore_cmp_pos=True)
 
     removed_comps= [comp for guid, (hash, comp) in bef_guid_hash.items() if guid not in aft_guid_hach.keys()]
     print("removed_guids: ", [t.instance_guid for t in removed_comps])
