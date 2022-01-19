@@ -131,7 +131,7 @@ if __name__ == '__main__':
         epilog="-",
         add_help=True
         )
-    parser.add_argument("-p", "--path_to_repo", help="path to a repository", action="store", type=str, default="./")
+    parser.add_argument("-p", "--path_to_repo", help="path to a repository", action="store", type=str, required=True)
     parser.add_argument("-t", "--target", help="target .ghx file", action="store", type=str, required=True)
     parser.add_argument("-l", "--left_branch", help="left branch", action="store", type=str, required=True)
     parser.add_argument("-r", "--right_branch", help="right branch", action="store", type=str, required=True)
