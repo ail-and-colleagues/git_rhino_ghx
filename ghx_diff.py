@@ -187,7 +187,7 @@ if __name__ == '__main__':
     # name output file as {original file name}_diff({from-branch-name}_to_{to-branch-name})
     bef_branch_name = escape_branch_name(bef_branch.branch.name)
     aft_branch_name = escape_branch_name(aft_branch.branch.name)
-    out_filename += "_diff({}_to_{}).ghx".format(bef_branch_name, aft_branch_name)
+    out_filename += "({}_to_{})_diff.ghx".format(bef_branch_name, aft_branch_name)
     et.ElementTree(aft_xml).write(
         out_filename,
         pretty_print = True,

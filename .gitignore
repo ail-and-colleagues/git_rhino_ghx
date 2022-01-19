@@ -1,4 +1,5 @@
 *.dot
+*_diff.ghx
 #sample/
 test_snippets/
 *.sqlite

@@ -182,7 +182,7 @@ class Object(Ghx_Content):
         s = s.replace("|", "\|")
         return s
 
-    def derive_node_desc(self):
+    def derive_node_desc(self, add_hash, ignore_positon):
         # s.node('struct3', r'hello\nworld |{ b |{c|<here> d|e}| f}| g | h')`
         display_name = self.name
         if self.nick_name:
@@ -196,7 +196,12 @@ class Object(Ghx_Content):
             desc = desc[:-1]
             desc += "}|"
             
-        desc += "{<" + self.instance_guid + "> " + Object.escape_chars(display_name) + " }"
+        if add_hash:
+            hash = self.generate_hash(ignore_positon)[:5]
+            desc += "{<" + self.instance_guid + "> " + Object.escape_chars(display_name) + "(" + hash +"...)" + " }"
+        else:
+            desc += "{<" + self.instance_guid + "> " + Object.escape_chars(display_name) + " }"
+
         if self.output_list:
             desc += "|{"
             for c in self.output_list:
@@ -275,7 +280,7 @@ class Panel_Object(Object):
         input_output_info.append(Object_Param(source_xelems, instance_guid, "in", "in", isInput, source, instance_guid))
         
         return cls(obj_xelem, input_output_info, user_text)
-    def derive_node_desc(self):
+    def derive_node_desc(self, add_hash, ignore_positon):
         # s.node('struct3', r'hello\nworld |{ b |{c|<here> d|e}| f}| g | h')`
         desc = ""
         display_name = self.name
@@ -283,7 +288,13 @@ class Panel_Object(Object):
             display_name += "|" + self.nick_name
         
         desc = ""
-        desc += "{<" + self.instance_guid + "> " + Object.escape_chars(display_name) + " }"
+
+        if add_hash:
+            hash = self.generate_hash(ignore_positon)[:5]
+            desc += "{<" + self.instance_guid + "> " + Object.escape_chars(display_name) + "(" + hash +"...)" + " }"
+        else:
+            desc += "{<" + self.instance_guid + "> " + Object.escape_chars(display_name) + " }"
+
         if self.user_text:
             desc += "|{ " + Object.escape_chars(self.user_text) + " }"       
         print(desc)
