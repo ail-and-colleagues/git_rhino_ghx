@@ -4,6 +4,8 @@ test project of version control for rhinoceros grasshopper.
 ## ghx_diff.py
 : Create a difference-indicated .ghx by specifying branches and a filename.
 ```
+usage: ghx_diff.py [-h] -p PATH_TO_REPO -t TARGET -l LEFT_BRANCH -r RIGHT_BRANCH [-i]
+optional arguments:
   -h, --help            show this help message and exit
   -p PATH_TO_REPO, --path_to_repo PATH_TO_REPO
                         path to a repository
@@ -44,7 +46,15 @@ conflictした.ghxを比較する際に便利だと思われる。
 
 ## ghx_to_dot.py
 : Create a network-like graph by parsing .ghx.
-
+```
+usage: ghx_to_dot.py [-h] -t TARGET [-a] [-i]
+optional arguments:
+  -h, --help            show this help message and exit
+  -t TARGET, --target TARGET
+                        target .ghx file
+  -a, --add_hash        add hash to node
+  -i, --ignore_positon  ignore component position changes
+  ```
 アルゴリズムの構成をネットワークのようなグラフで表し.pngで保存します。.ghxが大凡どのような処理であったかGithub上で確認できます。コンポーネントのhashなんかを付記しても便利だと思われる。  
 ![image](https://user-images.githubusercontent.com/39890894/143174556-d42e2eec-5cf7-40d2-996f-404d885f84bd.png)
 
